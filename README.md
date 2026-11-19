@@ -1,124 +1,148 @@
-# TrackFlow — Enterprise Bug & Issue Tracker
+# TrackFlow — Bug & Issue Tracker
 
-TrackFlow is a full-featured, Jira-like issue tracking and agile workflow management system designed for engineering teams. It features interactive Kanban boards with drag-and-drop workflow progression, high-density issue lists, comprehensive sprint metrics, role-based access control (RBAC), and ticket collaboration.
+A Jira-like issue tracking system. Teams create projects, manage members, report and assign issues, move them across a drag-and-drop Kanban board, discuss them in comments and attach screenshots. Access is controlled by JWT authentication, three user roles and per-project membership checks enforced on the backend.
+
+**Live demo:** https://trackflow-issue-tracker.vercel.app  
+**API docs (Swagger):** https://trackflow-rynj.onrender.com/swagger-ui.html
+
+> The backend runs on Render's free tier and sleeps when idle. The first request after a pause can take up to a minute while it wakes up.
+
+## Screenshots
+
+| Board | Issue detail | API docs |
+|---|---|---|
+| ![Board](docs/screenshots/board.png) | ![Issue detail](docs/screenshots/issue-detail.png) | ![Swagger](docs/screenshots/swagger.png) |
 
 ---
 
-## Key Features
+## Features
 
-- **Agile Kanban Board**: 5-stage workflow pipeline (`Backlog`, `To Do`, `In Progress`, `In Review`, `Done`) powered by `@dnd-kit` with touch and pointer support, WIP limits, and drop previews.
-- **Role-Based Access Control (RBAC)**:
-  - **ADMIN**: Complete project management, project deletion, team roster assignment, and ticket deletion.
-  - **MANAGER**: Project creation, team member management, and ticket deletion.
-  - **DEVELOPER**: Ticket creation, commenting, and editing restricted to assigned or reported issues.
-- **Issue Lifecycle Management**: Full detail drawer with markdown descriptions, story points (Fibonacci), priority levels (`Highest` to `Lowest`), labels, and components.
-- **Multipart Attachments**: Upload screenshots and error log files with live preview.
-- **Discussion Thread & Audit History**: Commenting system with relative timestamps and chronological activity audit logs.
-- **Real Authentication & Routing**: Login and Register pages with React Router (`/login`, `/register`, `/projects`, `/projects/:key/board`, `/projects/:key/list`, `/projects/:key/dashboard`) guarded by `ProtectedRoute`.
-- **Decoupled API Layer**: Built on Axios with request interceptors attaching JWT Bearer authorization tokens.
+- **Kanban board** with five columns (`Backlog`, `To Do`, `In Progress`, `In Review`, `Done`) and drag-and-drop built with `@dnd-kit` (mouse and touch). Status changes are saved to the database.
+- **Authentication:** register and login with BCrypt-hashed passwords and stateless JWT tokens.
+- **Role-based access control**
+  - **ADMIN:** everything, including deleting projects and changing user roles.
+  - **MANAGER:** create projects, manage members, delete issues.
+  - **DEVELOPER:** create issues and comments; edit only issues assigned to or reported by them.
+- **Project membership:** users can only see and change projects they belong to (ADMIN can access all).
+- **Issues:** type (bug, story, task, epic), priority, status, assignee, story points, labels and descriptions.
+- **Comments and attachments:** discussion thread per issue and screenshot or log uploads (type and size validation, path-traversal protection).
+- **Search and filters:** search by title, key or label; filter by type, priority and assignee; board, list and insights views.
+- **API documentation:** interactive Swagger UI generated with Springdoc OpenAPI.
 
 ---
 
 ## Tech Stack
 
-### Frontend
-- **Framework**: React 19 + TypeScript
-- **Bundler**: Vite 8
-- **Routing**: React Router 7
-- **Styling**: Tailwind CSS v4
-- **Drag & Drop**: `@dnd-kit/core` & `@dnd-kit/sortable`
-- **HTTP Client**: Axios with JWT interceptors
-- **Icons**: Lucide React
+**Frontend:** React 19, TypeScript, Vite, React Router, Tailwind CSS, `@dnd-kit`, Axios (JWT interceptor), Lucide icons.
 
-### Backend (`/backend`)
-- **Runtime**: Java 17 LTS
-- **Framework**: Spring Boot 3.3.4
-- **Security**: Spring Security 6 + stateless JWT
-- **Database**: PostgreSQL (Production) / H2 in-memory (Local dev)
-- **ORM**: Hibernate 6 / Spring Data JPA
-- **API Documentation**: Springdoc OpenAPI 3.0 (Swagger UI at `/swagger-ui.html`)
+**Backend (`/backend`):** Java 17, Spring Boot 3, Spring Security 6 + JWT, Spring Data JPA / Hibernate, Maven, Springdoc OpenAPI.
+
+**Database:** PostgreSQL on Neon. H2 (in-memory) is used only by the automated tests.
+
+**Deployment:** Render (Docker, backend), Vercel (frontend), Neon (database).
 
 ---
 
 ## Project Structure
 
 ```
-├── /backend/                 # Spring Boot 3 Java 17 REST API
-│   ├── src/main/java/        # Controllers, Services, Entities, DTOs, Security
-│   ├── src/main/resources/   # application.yml and profiles (dev, prod)
-│   ├── Dockerfile            # Multi-stage production container
-│   └── pom.xml               # Maven dependencies and build configuration
-├── /src/                     # React 19 Frontend
-│   ├── api/                  # Axios client, authApi, projectApi, issueApi
-│   ├── components/           # KanbanBoard, ListView, DetailModal, Navbar
-│   ├── context/              # AppContext with state & RBAC policy guards
-│   ├── pages/                # LoginPage, RegisterPage, ProjectsPage, ProjectViewPage
-│   └── types/                # Domain TypeScript interfaces
-├── .env.example              # Environment variables template
-└── package.json              # Frontend dependencies and scripts
+├── backend/                  # Spring Boot REST API
+│   ├── src/main/java/        # controllers, services, entities, DTOs, security config
+│   ├── src/main/resources/   # application.yml (single config file)
+│   ├── src/test/             # tests (H2 in-memory config)
+│   ├── Dockerfile            # multi-stage container build
+│   └── pom.xml
+├── frontend/                 # React application source
+│   ├── api/                  # Axios client and API modules
+│   ├── components/           # Kanban board, list view, modals, navbar
+│   ├── context/              # app state and permission checks
+│   ├── pages/                # login, register, projects, project view
+│   └── types/                # TypeScript interfaces
+├── docs/screenshots/         # README images
+├── index.html, package.json, vite.config.ts, tsconfig.json
+├── vercel.json               # SPA routing rewrite for Vercel
+└── .env.example              # frontend environment template
 ```
 
 ---
 
-## Quick Start Guide
+## Running Locally
 
-### 1. Running the Frontend
+**Prerequisites:** Java 17, Maven, Node.js 20+ and a PostgreSQL database (for example a free Neon project).
 
-```bash
-# Install dependencies
-npm install
+### 1. Backend
 
-# Start Vite development server
-npm run dev
-```
+The database URL and user are set in `backend/src/main/resources/application.yml`. Point them at your own database, then set two environment variables so no secret is stored in the code.
 
-The frontend will run at `http://localhost:3000`.
+```powershell
+# Windows PowerShell (one time, then reopen the terminal)
+[Environment]::SetEnvironmentVariable("TF_PASSWORD", "your-database-password", "User")
+[Environment]::SetEnvironmentVariable("JWT_SECRET", "a-random-string-of-at-least-32-characters", "User")
 
-### 2. Running the Backend
-
-In a separate terminal:
-
-```bash
 cd backend
-
-# Run with local H2 in-memory database
 mvn spring-boot:run
 ```
 
-The backend REST API will run at `http://localhost:8080/api/v1` and the Swagger UI will be accessible at `http://localhost:8080/swagger-ui.html`.
+The API runs at `http://localhost:8080/api/v1` and Swagger UI at `http://localhost:8080/swagger-ui.html`.
+
+### 2. Frontend
+
+From the repository root:
+
+```bash
+npm install
+npm run dev
+```
+
+The app runs at `http://localhost:3000`. It calls `http://localhost:8080/api/v1` by default; set `VITE_API_URL` to use another backend.
+
+### 3. Tests
+
+```bash
+cd backend
+mvn test
+```
+
+Tests use their own in-memory H2 configuration and never touch the real database.
 
 ---
 
-## Default Test Accounts
+## First Admin Account
 
-| Name | Role | Email | Password |
-|---|---|---|---|
-| **Sarah Connor** | ADMIN | `sarah.connor@enterprise.io` | `password123` |
-| **Alex Rivera** | MANAGER | `alex.rivera@enterprise.io` | `password123` |
-| **Maya Chen** | DEVELOPER | `maya.chen@enterprise.io` | `password123` |
-| **Leo Kim** | DEVELOPER | `leo.kim@enterprise.io` | `password123` |
+There are no default accounts. Registration always creates a `DEVELOPER`, so the first administrator is promoted once in the database:
+
+1. Register through the app (`/register`).
+2. Run in the database SQL console: `UPDATE users SET role = 'ADMIN' WHERE email = 'your@email.com';`
+3. Log out and log in again to get a token with the ADMIN role.
+
+Admins can then change other users' roles through `PUT /api/v1/users/{id}/role`.
 
 ---
 
-## Production Deployment (Render / Cloud Run / Docker)
+## Deployment
 
-### Backend Environment Variables
+### Backend (Render, Docker)
 
-| Variable | Description | Example |
-|---|---|---|
-| `SPRING_PROFILES_ACTIVE` | Active profile | `prod` |
-| `PORT` | Container HTTP port | `8080` (or dynamic port from cloud host) |
-| `DB_URL` | PostgreSQL JDBC connection URL | `jdbc:postgresql://db.render.com:5432/trackflow` |
-| `DB_USER` | PostgreSQL username | `trackflow_admin` |
-| `DB_PASSWORD` | PostgreSQL password | `production_db_password` |
-| `JWT_SECRET` | 256-bit signing key (>=32 bytes; fails startup if missing) | `404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970` |
-| `CORS_ALLOWED_ORIGINS` | Permitted frontend origins | `https://trackflow-app.onrender.com` |
-| `UPLOAD_DIR` | File attachment storage path | `/var/data/uploads` |
+Root directory `backend`, runtime Docker. Environment variables:
 
-> ⚠️ **Render Deployment Note on Ephemeral Disks**:  
-> On standard Render web services, container disks are ephemeral. Uploaded screenshots and log files stored in `UPLOAD_DIR` will not persist across container restarts or deploys unless you attach a **Render Persistent Disk** mounted at `UPLOAD_DIR` (e.g. `/var/data/uploads`).
+| Variable | Description |
+|---|---|
+| `TF_PASSWORD` | Database password |
+| `JWT_SECRET` | Signing key, at least 32 bytes; startup fails if missing |
+| `CORS_ALLOWED_ORIGINS` | Allowed frontend origin, for example `https://trackflow-issue-tracker.vercel.app` (no trailing slash) |
+| `JAVA_TOOL_OPTIONS` | `-Xmx300m` to stay within the 512 MB free-tier memory |
+| `PORT` | Set automatically by Render |
+| `UPLOAD_DIR` | Attachment storage path (optional, default `./uploads`) |
 
-### Docker Build
+### Frontend (Vercel)
+
+Root directory is the repository root, framework Vite. Environment variable:
+
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | `https://<your-render-service>.onrender.com/api/v1` |
+
+### Docker
 
 ```bash
 cd backend
@@ -127,7 +151,24 @@ docker build -t trackflow-backend:latest .
 
 ---
 
+## Security Notes
+
+- Passwords are hashed with BCrypt; sessions use stateless JWT. There is no hardcoded JWT secret.
+- Roles and project membership are enforced in the service layer, not only in the UI.
+- Registration cannot create privileged accounts; roles are changed only by an admin.
+- Attachment downloads are public by unguessable UUID filename, because `<img>` tags cannot send a Bearer token. Signed URLs would be the production fix.
+- Uploaded files on Render's free tier are ephemeral and are lost on redeploy. Use object storage (for example S3) or a persistent disk in production.
+- The schema is managed with `ddl-auto: update`. A production system would use migrations (for example Flyway).
+
+---
+
+## Known Limitations
+
+- Activity history is not recorded by the backend yet, so the activity tab is empty.
+- The sprint label on the board is a static display element, not a sprint-planning feature.
+
+---
+
 ## License
 
-Apache-2.0 License.
-
+Apache-2.0
